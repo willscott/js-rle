@@ -11,12 +11,12 @@ function Encode(buf) {
         encoded.appendRun(runs.shift())
     }
 
-    return encoded;
+    return encoded.toBuffer();
 }
 
 function Decode(buf) {
     const decoded = BitBuffer.From(buf);
-    
+    return decoded.Decode();
 }
 
 // transform the buffer into an array of number of bits before bit flips
@@ -53,3 +53,8 @@ function runLengths(buf) {
     runs.push(run);
     return runs
 }
+
+module.exports = {
+    Encode: Encode,
+    Decode: Decode,
+};
