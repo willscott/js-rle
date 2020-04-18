@@ -2,8 +2,8 @@ const BitBuffer = require('./bitbuffer')
 
 // Encode takes an array buffer of binary data, and returns an array buffer
 // of the RLE+ encoded formatting of that data.
-function Encode (buf) {
-  const runs = runLengths(buf)
+function Encode (buf, bitLength) {
+  const runs = runLengths(buf, bitLength)
 
   const encoded = new BitBuffer(buf.byteLength)
   // Header
@@ -27,7 +27,7 @@ function Decode (buf) {
 // the count of of bits before bit flips. The first element returned is
 // a 0 or 1 representing the first bit. The remaining elements are integers
 // of how many bits until a flip.
-function runLengths (buf) {
+function runLengths (buf, bitLength) {
   if (buf.byteLength === 0) {
     return []
   }
@@ -35,7 +35,10 @@ function runLengths (buf) {
   const runs = [((byteView[0] & 1) === 1) ? 1 : 0]
   let state = ((byteView[0] & 1) === 1)
   let run = 1
-  for (let n = 1; n < 8 * byteView.byteLength; n++) {
+  if (!bitLength) {
+    bitLength = 8 * byteView.byteLength
+  }
+  for (let n = 1; n < bitLength; n++) {
     if ((byteView[n >> 3] & (1 << (n % 8))) === 0) {
       if (state === false) {
         run++

@@ -72,7 +72,6 @@ BitBuffer.prototype.appendRun = function (len) {
   } else {
     this.append(0, 2)
     while (len > 127) {
-      this.appendBit(1)
       this.appendBit(len & 1)
       this.appendBit(len & 2)
       this.appendBit(len & 4)
@@ -80,9 +79,9 @@ BitBuffer.prototype.appendRun = function (len) {
       this.appendBit(len & 16)
       this.appendBit(len & 32)
       this.appendBit(len & 64)
-      len = len >> 8
+      this.appendBit(1)
+      len = len >> 7
     }
-    this.appendBit(0)
     this.appendBit(len & 1)
     this.appendBit(len & 2)
     this.appendBit(len & 4)
@@ -90,6 +89,7 @@ BitBuffer.prototype.appendRun = function (len) {
     this.appendBit(len & 16)
     this.appendBit(len & 32)
     this.appendBit(len & 64)
+    this.appendBit(0)
   }
 }
 
@@ -117,7 +117,6 @@ BitBuffer.prototype.readRun = function (position) {
   let msb = 0
   do {
     bits += 8
-    more = this.readBit(position++)
 
     if (this.readBit(position++)) { val += (1 << msb) }
     msb++
@@ -133,6 +132,7 @@ BitBuffer.prototype.readRun = function (position) {
     msb++
     if (this.readBit(position++)) { val += (1 << msb) }
     msb++
+    more = this.readBit(position++)
   } while (more)
   return [bits, val]
 }
@@ -151,7 +151,6 @@ BitBuffer.prototype.Decode = function () {
 
   let pos = 2
   let val = this.readBit(pos++)
-  const runs = [val]
 
   if (this.capacity - this.length < 16) {
     this.expand()
@@ -163,7 +162,6 @@ BitBuffer.prototype.Decode = function () {
     }
     pos += next[0]
     outBuffer.append(val, next[1])
-    runs.push(next[1])
     val = !val
   }
   return outBuffer.toBuffer()
