@@ -3,7 +3,6 @@ const BitBuffer = require('./bitbuffer');
 function Encode(buf) {
     const runs = runLengths(buf);
   
-    console.log(JSON.stringify(runs));
     const encoded = new BitBuffer(buf.byteLength);    
     // Header
     encoded.append(false, 2);
@@ -51,7 +50,7 @@ function runLengths(buf) {
         }
     }
     runs.push(run);
-    return runs
+    return runs;
 }
 
 module.exports = {

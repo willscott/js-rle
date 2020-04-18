@@ -29,7 +29,7 @@ BitBuffer.prototype.appendBit = function(value) {
         this.length++;
         return
     }
-    if (this.length > this.capacity) {
+    if (this.length >= this.capacity) {
         this.expand();
     }
     this.view[this.length >> 3] |= (1 << (this.length %8));
@@ -47,7 +47,7 @@ BitBuffer.prototype.append = function(value, cnt) {
     }
     while (cnt > 0) {
         // optimistically set full bytes while we can.
-        if (this.length % 8 == 0 && cnt > 8) {
+        if (this.length % 8 == 0 && cnt >= 8) {
             this.view[this.length >> 3] = 0xFF;
             this.length += 8;
             cnt -= 8;
@@ -169,7 +169,6 @@ BitBuffer.prototype.Decode = function() {
         runs.push(next[1]);
         val = !val;
     }
-    console.log(JSON.stringify(runs))
     return outBuffer.toBuffer();
 }
 
