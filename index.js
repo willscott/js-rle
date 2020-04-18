@@ -2,7 +2,8 @@ const BitBuffer = require('./bitbuffer');
 
 function Encode(buf) {
     const runs = runLengths(buf);
-    
+  
+    console.log(JSON.stringify(runs));
     const encoded = new BitBuffer(buf.byteLength);    
     // Header
     encoded.append(false, 2);
@@ -27,12 +28,11 @@ function runLengths(buf) {
         return [];
     }
     const byteView = new Uint8Array(buf);
-    let runs = [];
-    runs[0] = (byteView[0] & 1 == 1) ? 1 : 0;
+    let runs = [(byteView[0] & 1 == 1) ? 1 : 0];
     let state = (byteView[0] & 1 == 1) ? true : false;
     let run = 1;
     for (let n = 1; n < 8 * byteView.byteLength; n++) {
-        if (byteView[n / 8] & (1 << (n % 8)) == 0) {
+        if ((byteView[n >> 3] & (1 << (n % 8))) == 0) {
             if (state == false) {
                 run++;
             } else {

@@ -15,11 +15,13 @@ BitBuffer.From = function(buf) {
 }
 
 BitBuffer.prototype.expand = function() {
-    const newBuffer = new ArrayBuffer(this.buffer.byteLength * 2)
-    this.view = new Uint8Array(newBuffer);
-    this.view.set(this.buffer);
+    let newSize = Math.max(1024, this.buffer.byteLength * 2);
+    const newBuffer = new ArrayBuffer(newSize);
+    let newView = new Uint8Array(newBuffer);
+    newView.set(this.view, 0);
     this.buffer = newBuffer;
-    this.capacity *= 2;
+    this.view = newView;
+    this.capacity = 8 * newSize;
 }
 
 BitBuffer.prototype.appendBit = function(value) {
@@ -30,7 +32,7 @@ BitBuffer.prototype.appendBit = function(value) {
     if (this.length > this.capacity) {
         this.expand();
     }
-    this.view[this.length / 8] |= (1 << (this.length %8));
+    this.view[this.length >> 3] |= (1 << (this.length %8));
     this.length++;
 }
 
@@ -46,11 +48,11 @@ BitBuffer.prototype.append = function(value, cnt) {
     while (cnt > 0) {
         // optimistically set full bytes while we can.
         if (this.length % 8 == 0 && cnt > 8) {
-            this.view[this.length / 8] = -1;
+            this.view[this.length >> 3] = 0xFF;
             this.length += 8;
             cnt -= 8;
         } else {
-            this.view[this.length / 8] |= (1 << (this.length % 8));
+            this.view[this.length >> 3] |= (1 << (this.length % 8));
             this.length++;
             cnt--;
         }
@@ -78,7 +80,7 @@ BitBuffer.prototype.appendRun = function(len) {
             this.appendBit(len & 16);
             this.appendBit(len & 32);
             this.appendBit(len & 64);
-            len /= 128;
+            len = len >> 8;
         }
         this.appendBit(0);
         this.appendBit(len & 1);
@@ -92,16 +94,15 @@ BitBuffer.prototype.appendRun = function(len) {
 }
 
 BitBuffer.prototype.readBit = function(position) {
-    return this.view[this.length / 8] & (1 << (this.length % 8));
+    return this.view[position >> 3] & (1 << (position % 8));
 }
 
 // returns [#bits used to encode the run, length of run]
 BitBuffer.prototype.readRun = function(position) {
-    if(this.readBit(position)) {
+    if(this.readBit(position++)) {
         return [1, 1];
     }
-    position++;
-    if(this.readBit(position)) {
+    if(this.readBit(position++)) {
         // short run.
         return [6, 
             (this.readBit(position++) ? 1 : 0) +
@@ -110,7 +111,6 @@ BitBuffer.prototype.readRun = function(position) {
             (this.readBit(position) ? 8 : 0)]
     }
     // long run.
-    position++;
     let more = false;
     let val = 0;
     let bits = 2;
@@ -138,14 +138,13 @@ BitBuffer.prototype.readRun = function(position) {
 }
 
 BitBuffer.prototype.toBuffer = function() {
-    return this.buffer.slice(0, (this.length + 7) / 8);
+    return this.buffer.slice(0, (this.length + 7) >> 3);
 }
 
 // Decode decodes an RLE encoded buffer into a provided buffer.
 // If no buffer is provided, a new one will be allocated.
 BitBuffer.prototype.Decode = function() {
     const outBuffer = new BitBuffer(0);
-    outBuffer.length = 0;
 
     if(this.readBit(0) || this.readBit(1)) {
         throw new Error("Invalid version")
@@ -153,12 +152,24 @@ BitBuffer.prototype.Decode = function() {
 
     let pos = 2;
     let val = this.readBit(pos++)
+    let runs = [val];
+
+    if (this.capacity - this.length < 16) {
+        this.expand();
+    }
+    let n = 0;
     while (pos < this.length) {
+        n++;
         let next = this.readRun(pos);
+        if (next[1] == 0) {
+            break
+        }
         pos += next[0];
         outBuffer.append(val, next[1]);
+        runs.push(next[1]);
         val = !val;
     }
+    console.log(JSON.stringify(runs))
     return outBuffer.toBuffer();
 }
 
