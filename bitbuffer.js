@@ -7,6 +7,9 @@ function BitBuffer (byteCapacity) {
 
 BitBuffer.From = function (buf) {
   const b = new BitBuffer(0)
+  if (Array.isArray(buf)) {
+    return b.appendMany(buf)
+  }
   b.buffer = buf
   b.capacity = 8 * buf.byteLength
   b.length = b.capacity
@@ -91,6 +94,14 @@ BitBuffer.prototype.appendRun = function (len) {
     this.appendBit(len & 64)
     this.appendBit(0)
   }
+}
+
+BitBuffer.prototype.appendMany = function (arr) {
+  let val = 0
+  arr.forEach(el => {
+    this.append(val, el)
+    val = !val
+  })
 }
 
 BitBuffer.prototype.readBit = function (position) {
